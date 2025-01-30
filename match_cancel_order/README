@@ -1,0 +1,7 @@
+The other day, I checked the daily production capacity data and found that some data had been canceled due to incorrect entry. This resulted in a negative production quantity. The issue is that there was no indication of the original data that was canceled.
+
+To address this, my proposed solution is:
+
+Identify products with the same Product Order.
+Identify products with the same production quantity.
+Map the IDs that are likely canceled based on the assumption that 'orders are always canceled before placing a new order with the same quantity.
