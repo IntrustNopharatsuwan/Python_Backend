@@ -21,31 +21,21 @@ def FilterSidebar(start_datetime,end_datetime,division_list,report_list,md_list)
             if len(off_report) > 0:
                 select_repost.extend(off_report)
     return select_repost, select_start_date, select_end_date, select_division
-def non_mod(data):
-    result = data.groupby(["channel","mat_no"]).agg(
+def transform_data(raw_data):
+    def weighted_mode(group):
+        weighted_freq = group.groupby(['unit_price']).apply(lambda x: (x['qty'] * 1).sum())
+        return weighted_freq.idxmax()
+
+    mode_price = raw_data.groupby(["channel", "mat_no"]).apply(weighted_mode).reset_index(name='mode_price')
+    normal = raw_data.groupby(["channel","mat_no"]).agg(
         min_price=("unit_price", "min"),
         avg_price=("unit_price", "mean"),
         median_price=("unit_price", "median"),
         max_price=("unit_price", "max")
         ).reset_index()
-    result['min_price'] = result['min_price'].round(2)
-    result['avg_price'] = result['avg_price'].round(2)
-    result['median_price'] = result['median_price'].round(2)
-    result['max_price'] = result['max_price'].round(2)
+    result = normal.merge(mode_price,how='left',on=["channel", "mat_no"])
+    result[['min_price','avg_price','median_price','max_price','mode_price']] = result[['min_price','avg_price','median_price','max_price','mode_price']].round(2)
     return result
-def mod(data):
-    sum_group_data = data.groupby(['channel','mat_no','unit_price'])[['qty']].sum().reset_index()
-    max_sum_group_data = sum_group_data.groupby(['channel','mat_no'])[['qty']].max().reset_index()
-    result = sum_group_data.merge(max_sum_group_data,how='inner',on=['channel','mat_no','qty'])
-    result = result[['channel','mat_no','unit_price']]
-    result.columns = ['channel','mat_no','mode_price']
-    result['mode_price'] = result['mode_price'].round(2)
-    return result
-def transform_data(raw_data):
-    non_mod_data = non_mod(raw_data)
-    mod_data = mod(raw_data)
-    data = non_mod_data.merge(mod_data,how='left',on=['channel','mat_no'])
-    return data
 def online_data(select_start_date,select_end_date):
     dwms_conn = create_engine("mysql+pymysql://username:password@hostname/database")
     on_query = """
